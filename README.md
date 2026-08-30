@@ -2,9 +2,9 @@
 
 A self-hosted course-matching and lead-generation chatbot built for **AbroadStudyInfo.com**.
 
-The system helps prospective students discover relevant university programmes in Italy, captures qualified enquiries, and logs conversations for internal review. It combines a custom WordPress chat widget with self-hosted **n8n**, **Google Sheets**, fuzzy string matching, HTTPS webhooks, and a low-cost VPS deployment.
+The system helps prospective students discover relevant university programmes in Italy, captures qualified enquiries, and logs conversations for internal review. It combines a custom WordPress chat widget with self-hosted **n8n**, **Google Sheets**, fuzzy string matching, HTTPS webhooks, and a VPS deployment.
 
-> **Important:** The current matching engine is deterministic and typo-tolerant; it does **not** use an LLM or generative AI. Course suggestions are returned only from the verified course database.
+> The matching engine is deterministic and typo-tolerant. It does not use an LLM or generative AI; course suggestions are returned only from the verified course database.
 
 ## What the system does
 
@@ -16,7 +16,7 @@ A visitor:
 5. receives up to **5 ranked course matches** from a database of **871 Italian university programmes**;
 6. can request a callback, open WhatsApp, book a Q&A session, or continue independently.
 
-The backend also logs every bot/student message with a session ID and saves callback leads to a dedicated Google Sheet.
+The backend also logs bot/student messages with a session ID and stores callback leads in Google Sheets.
 
 ## Architecture
 
@@ -36,41 +36,43 @@ finder       |            |
 ```
 
 ### Frontend
-The visible chat interface is rendered in **Elementor**. Conversational logic is injected site-wide through **WPCode** using `widget/course-finder-widget.js`.
+The visible chat interface is rendered in **Elementor**. The conversation logic is deployed site-wide through **WPCode** using [`src/course-finder-widget.js`](src/course-finder-widget.js).
 
 ### Backend
-Three sanitized n8n workflows are included:
+Three sanitized n8n workflows are included in [`workflows/`](workflows/):
 
 | Workflow | Purpose |
 |---|---|
-| `course-finder.json` | Reads the course database, applies degree filtering + fuzzy ranking, returns the top 5 matches |
-| `save-lead.json` | Saves callback details and search context |
-| `log-message.json` | Stores conversation messages grouped by session |
+| [`course-finder.json`](workflows/course-finder.json) | Reads the course database, applies degree filtering and fuzzy ranking, and returns the top 5 matches |
+| [`save-lead.json`](workflows/save-lead.json) | Saves callback details and search context |
+| [`log-message.json`](workflows/log-message.json) | Stores conversation messages grouped by session |
 
 ### Infrastructure
-Production stack: Ubuntu VPS, Docker, n8n, Nginx, Let's Encrypt/Certbot, WordPress, Elementor, WPCode, Google Sheets, JavaScript.
+Production stack: Ubuntu VPS, Docker, n8n, Nginx, Let's Encrypt/Certbot, WordPress, Elementor, WPCode, Google Sheets, and JavaScript.
 
-Deployment-specific IDs, credentials, spreadsheet identifiers, phone numbers, calendar URLs, workflow IDs, server IPs, and instance metadata have been removed from this public-ready package.
+Deployment-specific IDs, credentials, spreadsheet identifiers, phone numbers, calendar URLs, workflow IDs, server IPs, and instance metadata have been removed from the public repository.
 
 ## Screenshots
 
+The complete visual walkthrough is in [`docs/screenshots/`](docs/screenshots/).
+
 ### Live chatbot
-![Chatbot interface](docs/images/chatbot-interface.png)
+![Chatbot interface](docs/screenshots/chatbot-interface.png)
 
-### Real course-matching result
-![Course recommendations](docs/images/chatbot-results.png)
+### Course-matching results
+![Course recommendations](docs/screenshots/chatbot-results.png)
 
-### Callback flow completed
-![Callback confirmation](docs/images/callback-confirmation.png)
+### Callback confirmation
+![Callback confirmation](docs/screenshots/callback-confirmation.png)
 
-### n8n — course finder
-![Course finder workflow](docs/images/n8n-course-finder.png)
+### n8n course finder
+![Course finder workflow](docs/screenshots/n8n-course-finder.png)
 
-### n8n — lead generation
-![Lead generation workflow](docs/images/n8n-lead-generation.png)
+### n8n lead generation
+![Lead generation workflow](docs/screenshots/n8n-lead-generation.png)
 
-### n8n — conversation logging
-![Chat logging workflow](docs/images/n8n-chat-logging.png)
+### n8n chat logging
+![Chat logging workflow](docs/screenshots/n8n-chat-logging.png)
 
 ## Matching logic
 
@@ -92,42 +94,53 @@ The result set is always sourced from the verified course spreadsheet.
 ├── README.md
 ├── SECURITY.md
 ├── .gitignore
-├── widget/
+├── src/
+│   ├── README.md
 │   └── course-finder-widget.js
-├── n8n-workflows/
+├── workflows/
+│   ├── README.md
 │   ├── course-finder.json
 │   ├── save-lead.json
 │   └── log-message.json
+├── data/
+│   └── README.md
 ├── deployment/
 │   └── README.md
 └── docs/
     ├── PROJECT_REPORT.md
     ├── TECHNICAL_DOCUMENTATION.md
-    └── images/
+    └── screenshots/
+        ├── README.md
+        ├── chatbot-interface.png
+        ├── chatbot-results.png
+        ├── callback-confirmation.png
+        ├── n8n-course-finder.png
+        ├── n8n-lead-generation.png
+        └── n8n-chat-logging.png
 ```
 
 ## Reproducing the project
 
 1. Create a Google Sheet containing the course database.
-2. Import the three workflows from `n8n-workflows/`.
+2. Import the three workflows from `workflows/`.
 3. Configure your own Google Sheets OAuth credential in n8n.
-4. Replace placeholder spreadsheet/sheet IDs.
-5. Configure public webhook endpoints.
-6. Update the constants at the top of `widget/course-finder-widget.js`.
+4. Replace the placeholder spreadsheet and sheet values in the imported workflows.
+5. Configure the public webhook endpoints.
+6. Update the configuration constants in `src/course-finder-widget.js`.
 7. Add the chatbot HTML shell in Elementor.
-8. Deploy the JavaScript through WPCode or equivalent.
+8. Deploy the JavaScript through WPCode or an equivalent site-wide script mechanism.
 
-See `deployment/README.md` and `docs/TECHNICAL_DOCUMENTATION.md`.
+See [`deployment/README.md`](deployment/README.md) and [`docs/TECHNICAL_DOCUMENTATION.md`](docs/TECHNICAL_DOCUMENTATION.md) for more detail.
 
 ## Privacy and security
 
-The public package excludes real lead data, chat transcripts, OAuth tokens, Google Sheet IDs, VPS IP address, n8n instance/workflow identifiers, private phone numbers, and booking links. See `SECURITY.md`.
+The public repository excludes real lead data, chat transcripts, OAuth tokens, Google Sheet IDs, VPS IP addresses, n8n instance/workflow identifiers, private phone numbers, and booking links. See [`SECURITY.md`](SECURITY.md).
 
 ## Current limitations
 
 - Matching is fuzzy/keyword-based rather than semantic.
 - Lead notifications are not part of the documented core implementation.
-- The original project was tested manually; automated integration tests are a future enhancement.
+- The original project was tested manually; automated integration tests are a future improvement.
 - Eligibility, scholarship, visa, and admission decisions are intentionally outside scope.
 
 ## Project status
