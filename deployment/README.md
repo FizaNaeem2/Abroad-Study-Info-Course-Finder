@@ -1,29 +1,37 @@
 # Deployment Guide
 
-This package contains sanitized examples. Replace placeholders with your own configuration.
+This repository contains sanitized public examples. Replace the placeholders with your own deployment configuration before running the system.
 
 ## n8n
-Run n8n behind HTTPS and configure:
-```text
-N8N_HOST=YOUR_N8N_DOMAIN
-N8N_PROTOCOL=https
-WEBHOOK_URL=https://YOUR_N8N_DOMAIN/
-```
+
+Run n8n behind HTTPS and configure your public host, protocol, and webhook base URL for your environment.
 
 ## Google Sheets
-Create a course catalogue sheet, leads sheet, and chat-logs sheet. Import the workflow JSON files and select your own Google Sheets credential.
+
+Create three sheets/data stores for:
+
+- the course catalogue;
+- callback leads;
+- chat logs.
+
+Import the JSON files from `workflows/` and connect them to your own Google Sheets credential and spreadsheet/sheet identifiers.
 
 ## Webhooks
+
+The frontend expects three POST endpoints:
+
 ```text
-POST /webhook/course-finder
-POST /webhook/save-lead
-POST /webhook/log-message
+/webhook/course-finder
+/webhook/save-lead
+/webhook/log-message
 ```
 
-Restrict CORS to the real website origin in production.
+Restrict allowed browser origins to the real website domain in production.
 
 ## Frontend
-Update these constants in `widget/course-finder-widget.js`:
+
+Update the configuration constants near the top of `src/course-finder-widget.js`:
+
 ```text
 WEBHOOK_URL
 LEADS_WEBHOOK_URL
@@ -32,7 +40,8 @@ CALENDAR_URL
 WHATSAPP_NUMBER
 ```
 
-The page must contain:
+The script expects these elements to exist on the page:
+
 ```text
 #asi-bubble-btn
 #asi-thread
@@ -40,4 +49,15 @@ The page must contain:
 ```
 
 ## Testing
-Test valid searches, typo-heavy input, no-result behavior, backend failure behavior, lead submission, phone validation, chat-log ordering, and callback confirmation.
+
+Before deployment, test:
+
+- Bachelor's, Master's, and Single Cycle Degree searches;
+- typo-heavy subject queries;
+- no-result behavior;
+- backend/network failure behavior;
+- lead submission;
+- phone validation;
+- chat-log ordering;
+- callback confirmation;
+- CORS from the production website domain.
