@@ -1,22 +1,33 @@
 # Application Source
 
-This directory is reserved for the public-safe source used by the website chatbot.
+The public-safe frontend code for the Abroad Study Info Course Finder is stored here.
 
-The production implementation consists of two main pieces:
+## `course-finder-widget.js`
 
-- **Frontend chat widget** — embedded in the WordPress site and responsible for the conversation UI, user input, result rendering, and callback flow.
-- **Matching logic** — JavaScript executed inside the n8n course-search workflow to filter and rank programme records returned from Google Sheets.
+This file contains the chatbot conversation flow used on the WordPress site. It handles:
 
-Before production source is committed here, environment-specific URLs, webhook endpoints, IDs, tokens, credentials, and private configuration must be removed or replaced with documented placeholders.
+- degree selection;
+- subject input;
+- academic-background and intake questions;
+- email capture;
+- course-search requests to the n8n backend;
+- result rendering;
+- callback requests;
+- WhatsApp and booking actions;
+- chat logging with a per-session identifier.
 
-Suggested final layout:
+Production webhook URLs, booking links, and phone numbers have been replaced with placeholders.
+
+The course-ranking algorithm itself lives in `workflows/course-finder.json`, because that JavaScript runs inside the n8n Code node rather than in the browser.
+
+## Page requirements
+
+The widget expects these elements to exist in the WordPress/Elementor page:
 
 ```text
-src/
-├── widget/
-│   ├── chatbot.html
-│   ├── chatbot.css
-│   └── chatbot.js
-└── matching/
-    └── course-matcher.js
+#asi-bubble-btn
+#asi-thread
+#asi-controls
 ```
+
+The original site used Elementor for the visible chat shell and WPCode for the JavaScript behavior.
