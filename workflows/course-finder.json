@@ -1,0 +1,71 @@
+{
+  "name": "Course Finder",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [16, 0],
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {"__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id"},
+        "sheetName": {"__rl": true, "value": "YOUR_COURSE_DATABASE_SHEET", "mode": "name"},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [688, 0],
+      "name": "Get row(s) in sheet",
+      "credentials": {"googleSheetsOAuth2Api": {"name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"}}
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id":"9735b79b-1d33-4181-a81b-55349147ceba","name":"degree_type","value":"masters","type":"string"},
+            {"id":"d953c9d9-3ee8-418e-9fd4-3dbf89346510","name":"course","value":"data science","type":"string"},
+            {"id":"c332f418-7747-4bb6-bc14-2f165084f6bb","name":"region","value":"tuscany","type":"string"}
+          ]
+        },
+        "options": {"ignoreConversionErrors": false}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [448, 0],
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const userInput = $(\"Webhook\").first().json.body ||\n  $(\"Webhook\").first().json.query || {};\nconst targetDegreeRaw = (userInput.degree_type || \"\").toLowerCase();\nconst targetCourseRaw = (userInput.course || \"\").toLowerCase();\n\nlet targetDegree = \"\";\nif (targetDegreeRaw.includes(\"master\")) targetDegree = \"master\";\nelse if (targetDegreeRaw.includes(\"bachelor\")) targetDegree = \"bachelor\";\nelse if (targetDegreeRaw.includes(\"single cycle\")) targetDegree = \"single cycle\";\n\nconst stopWords = [\"from\", \"of\", \"the\", \"in\", \"and\", \"a\", \"an\", \"at\", \"for\", \"to\"];\n\nfunction cleanWord(w) {\n  return w.replace(/[^a-z0-9]/g, \"\");\n}\n\nconst targetWords = targetCourseRaw\n  .split(/\\s+/)\n  .map(cleanWord)\n  .filter(w => w.length > 1 && !stopWords.includes(w));\n\nfunction levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));\n  for (let i = 0; i <= m; i++) dp[i][0] = i;\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++) {\n    for (let j = 1; j <= n; j++) {\n      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];\n      else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);\n    }\n  }\n  return dp[m][n];\n}\n\nfunction fuzzyMatch(word1, word2) {\n  if (word1 === word2) return true;\n  if (word2.includes(word1) || word1.includes(word2)) return true;\n  const maxLen = Math.max(word1.length, word2.length);\n  const allowedDistance = maxLen <= 4 ? 1 : maxLen <= 8 ? 2 : 3;\n  return levenshtein(word1, word2) <= allowedDistance;\n}\n\nconst rows = $input.all();\n\nconst scoredResults = rows.map(item => {\n  const rowData = item.json;\n  const courseName = (rowData['Course name'] || \"\").toLowerCase();\n  const department = (rowData['Department'] || \"\").toLowerCase();\n  const courseType = (rowData['Course Type'] || \"\").toLowerCase();\n\n  const degreeMatch = targetDegree && courseType.includes(targetDegree);\n  if (!degreeMatch) return null;\n\n  const courseWords = courseName.split(/\\s+/).map(cleanWord).filter(w => w.length > 1);\n  const deptWords = department.split(/\\s+/).map(cleanWord).filter(w => w.length > 1);\n  const allFieldWords = [...courseWords, ...deptWords];\n\n  let matchedWordCount = 0;\n  targetWords.forEach(tw => {\n    const hasMatch = allFieldWords.some(fw => fuzzyMatch(tw, fw));\n    if (hasMatch) matchedWordCount++;\n  });\n\n  if (matchedWordCount === 0) return null;\n\n  let score = matchedWordCount * 3;\n  if (courseName === targetCourseRaw) score += 10;\n\n  return { json: { ...rowData, matchScore: score } };\n})\n  .filter(item => item !== null)\n  .sort((a, b) => b.json.matchScore - a.json.matchScore)\n  .slice(0, 5);\n\nreturn scoredResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [896, 0],
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "course-finder",
+        "responseMode": "lastNode",
+        "responseData": "allEntries",
+        "options": {"allowedOrigins": "*"}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, -176],
+      "name": "Webhook"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {"main":[[]]},
+    "Edit Fields": {"main":[[{"node":"Get row(s) in sheet","type":"main","index":0}]]},
+    "Get row(s) in sheet": {"main":[[{"node":"Code in JavaScript","type":"main","index":0}]]},
+    "Webhook": {"main":[[{"node":"Get row(s) in sheet","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1","binaryMode":"separate","availableInMCP":false},
+  "nodeGroups": []
+}
