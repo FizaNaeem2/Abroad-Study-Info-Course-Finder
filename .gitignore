@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.n8n/
+n8n-data/
+private-workflows/
+*.log
+*.tmp
