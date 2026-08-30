@@ -1,15 +1,33 @@
 # n8n Workflows
 
-This directory contains sanitized, exportable versions of the n8n workflows used by the Abroad Study Info Course Finder.
+This folder contains the sanitized n8n workflows used by the Abroad Study Info Course Finder.
 
-## Production workflows
+## Course Finder
 
-1. **Course search workflow** — receives chatbot requests through a webhook, reads the programme catalogue from Google Sheets, and applies the JavaScript matching/ranking logic.
-2. **Lead generation workflow** — receives callback/lead details and appends them to the leads sheet.
-3. **Chat logging workflow** — records chatbot interactions for internal review.
+`course-finder.json`
 
-## Security
+Receives a course-search request through a POST webhook, reads the university programme catalogue from Google Sheets, filters by degree level, applies typo-tolerant JavaScript matching with Levenshtein distance, ranks the results, and returns the top five matches.
 
-Production workflow exports may contain credential references, webhook identifiers, spreadsheet IDs, hostnames, or other environment-specific configuration. Do not commit raw production exports until those values have been reviewed and sanitized.
+## Save Lead
 
-The screenshots in `docs/screenshots/` document the workflow architecture without exposing credentials.
+`save-lead.json`
+
+Receives callback details submitted through the chatbot and appends the user's name, email, WhatsApp number, degree level, subject, academic background, and intended intake to the leads sheet.
+
+## Log Chat Message
+
+`log-message.json`
+
+Records chatbot messages in Google Sheets using a session ID, timestamp, sender, and message text.
+
+## Before importing
+
+The public files use placeholders instead of production identifiers:
+
+- `YOUR_GOOGLE_SHEET_ID`
+- `YOUR_GOOGLE_SHEETS_CREDENTIAL`
+- `YOUR_COURSE_DATABASE_SHEET`
+
+After importing a workflow into n8n, connect your own Google Sheets credential and select the appropriate spreadsheet/sheet.
+
+The workflows are intentionally stored as inactive in the repository so importing them does not immediately expose a live webhook.
