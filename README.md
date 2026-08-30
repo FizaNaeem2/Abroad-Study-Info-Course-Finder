@@ -1,91 +1,138 @@
-# Abroad Study Info — Course Finder Chatbot
+# Abroad Study Info — Course Finder & Lead Automation Platform
 
-A self-hosted course-matching and lead-generation chatbot built for **AbroadStudyInfo.com**.
+A **production-deployed full-stack automation system** built for AbroadStudyInfo.com. It combines a conversational web interface, self-hosted workflow orchestration, fuzzy course search and ranking, an **871-programme** catalogue, lead capture, conversation logging, and VPS/HTTPS infrastructure.
 
-The system helps prospective students discover relevant university programmes in Italy, captures qualified enquiries, and logs conversations for internal review. It combines a custom WordPress chat widget with self-hosted **n8n**, **Google Sheets**, fuzzy string matching, HTTPS webhooks, and a VPS deployment.
+> **Project level: Advanced / Production Engineering** — this is an end-to-end deployed system, not only a chatbot UI.
 
-> The matching engine is deterministic and typo-tolerant. It does not use an LLM or generative AI; course suggestions are returned only from the verified course database.
+The recommendation engine is deterministic and typo-tolerant rather than generative. Programme suggestions are returned only from the verified catalogue.
 
-## What the system does
+## Engineering scope
 
-A visitor:
-1. selects a degree level;
-2. enters a subject in free text;
-3. provides academic background and intended intake;
-4. provides an email address;
-5. receives up to **5 ranked course matches** from a database of **871 Italian university programmes**;
-6. can request a callback, open WhatsApp, book a Q&A session, or continue independently.
+- **Full-stack integration:** WordPress/Elementor frontend connected to self-hosted n8n through HTTPS webhooks.
+- **Workflow orchestration:** three independent backend workflows for course discovery, lead generation, and conversation logging.
+- **Search & ranking:** custom JavaScript with normalization, tokenization, degree filtering, stop-word removal, Levenshtein typo tolerance, scoring, sorting, and top-5 selection.
+- **Data integration:** Google Sheets programme catalogue plus separate operational lead and chat-log stores.
+- **Infrastructure:** Ubuntu VPS, Docker, Nginx reverse proxy, DNS, HTTPS/TLS with Let's Encrypt, and production webhook routing.
+- **Frontend engineering:** multi-step conversation state, asynchronous API calls, dynamic result rendering, validation, callback flow, WhatsApp handoff, and booking integration.
+- **Reliability/debugging:** CORS/preflight, webhook lifecycle, response-mode, DOM timing, duplicate-ID, DNS, and concurrent logging issues were diagnosed and resolved during deployment.
+- **Security/privacy:** public repository sanitized to remove production credentials, identifiers, contact data, server information, and private configuration.
 
-The backend also logs bot/student messages with a session ID and stores callback leads in Google Sheets.
+## End-to-end user flow
+
+A prospective student can:
+
+1. select a degree level;
+2. describe a study interest in free text;
+3. provide academic background and intended intake;
+4. provide an email address;
+5. receive up to **5 ranked programme matches** from 871 Italian university programmes;
+6. request admission support, a callback, WhatsApp contact, or a Q&A booking.
+
+Behind the interface, the platform assigns a session ID, logs chatbot interactions, sends search requests to the matching workflow, and stores qualified callback leads for follow-up.
 
 ## Architecture
 
 ```text
-WordPress / Elementor / WPCode
-            |
-            | HTTPS fetch()
-            v
-      Self-hosted n8n
-    /        |         \
-course    save-lead   log-message
-finder       |            |
-   |         |            |
-   +------ Google Sheets -+
-            |
-      verified course DB
+Student
+  |
+  v
+WordPress / Elementor UI
+  |
+WPCode JavaScript
+  |
+HTTPS / JSON
+  v
+Nginx Reverse Proxy
+  |
+Self-hosted n8n
+  |------------------|------------------|
+  v                  v                  v
+Course Finder     Save Lead         Log Message
+  |                  |                  |
+  +------------ Google Sheets ----------+
+  |
+JavaScript fuzzy matching + ranking
+  |
+Top 5 verified programmes
+  |
+Chatbot result rendering
 ```
 
-### Frontend
-The visible chat interface is rendered in **Elementor**. The conversation logic is deployed site-wide through **WPCode** using [`src/course-finder-widget.js`](src/course-finder-widget.js).
+## Technology stack
 
-### Backend
+| Layer | Technology |
+|---|---|
+| Website / UI | WordPress, Elementor |
+| Frontend logic | JavaScript, DOM APIs, Fetch API, WPCode |
+| Workflow backend | n8n |
+| Search logic | JavaScript, Levenshtein distance, token-based ranking |
+| Data layer | Google Sheets |
+| Server | Ubuntu VPS |
+| Containerization | Docker |
+| Reverse proxy | Nginx |
+| HTTPS | Let's Encrypt / Certbot |
+| User handoff | WhatsApp and booking/calendar flow |
+
+## Backend workflows
+
 Three sanitized n8n workflows are included in [`workflows/`](workflows/):
 
-| Workflow | Purpose |
+| Workflow | Responsibility |
 |---|---|
-| [`course-finder.json`](workflows/course-finder.json) | Reads the course database, applies degree filtering and fuzzy ranking, and returns the top 5 matches |
-| [`save-lead.json`](workflows/save-lead.json) | Saves callback details and search context |
-| [`log-message.json`](workflows/log-message.json) | Stores conversation messages grouped by session |
+| [`course-finder.json`](workflows/course-finder.json) | Receives search requests, reads programme data, filters by degree, performs fuzzy ranking, and returns the strongest matches |
+| [`save-lead.json`](workflows/save-lead.json) | Receives callback details and stores contact/search context |
+| [`log-message.json`](workflows/log-message.json) | Records chatbot messages with session and timestamp information |
 
-### Infrastructure
-Production stack: Ubuntu VPS, Docker, n8n, Nginx, Let's Encrypt/Certbot, WordPress, Elementor, WPCode, Google Sheets, and JavaScript.
+## Course-matching engine
 
-Deployment-specific IDs, credentials, spreadsheet identifiers, phone numbers, calendar URLs, workflow IDs, server IPs, and instance metadata have been removed from the public repository.
+The matching layer was designed for real student input rather than exact database wording. It:
+
+1. normalizes degree and query values;
+2. tokenizes the requested subject;
+3. removes common filler words;
+4. cleans and normalizes catalogue text;
+5. compares query terms with course-name and department terms;
+6. applies word-length-aware **Levenshtein distance** for typo tolerance;
+7. scores and ranks candidates;
+8. returns the five strongest verified matches.
+
+This keeps recommendations grounded in the actual catalogue while tolerating misspellings and conversational queries.
+
+## Production problems solved
+
+| Problem | Resolution |
+|---|---|
+| Production webhook returned 404 | Corrected workflow activation/publishing behavior |
+| Browser integration hit CORS/preflight errors | Corrected webhook origin configuration |
+| DNS changes appeared ineffective | Identified and updated the authoritative DNS provider |
+| Chat UI rendered incorrectly | Removed duplicate DOM IDs and consolidated the HTML shell |
+| JavaScript could not bind UI elements | Delayed initialization until the Elementor DOM was available |
+| Search returned empty/partial responses | Corrected n8n response timing and all-entry response settings |
+| Exact searches failed on natural input | Replaced substring matching with token-based fuzzy matching |
+| Chat log entries were occasionally lost | Serialized asynchronous logging through a Promise queue |
+| Callback phone input accepted poor data | Added country-code handling and numeric validation |
 
 ## Screenshots
 
-The complete visual walkthrough is in [`docs/screenshots/`](docs/screenshots/).
+Full visual documentation is available in [`docs/screenshots/`](docs/screenshots/).
 
 ### Live chatbot
 ![Chatbot interface](docs/screenshots/chatbot-interface.png)
 
-### Course-matching results
+### Ranked programme recommendations
 ![Course recommendations](docs/screenshots/chatbot-results.png)
 
-### Callback confirmation
+### Callback completion
 ![Callback confirmation](docs/screenshots/callback-confirmation.png)
 
-### n8n course finder
+### Course-search workflow
 ![Course finder workflow](docs/screenshots/n8n-course-finder.png)
 
-### n8n lead generation
+### Lead-generation workflow
 ![Lead generation workflow](docs/screenshots/n8n-lead-generation.png)
 
-### n8n chat logging
+### Conversation-logging workflow
 ![Chat logging workflow](docs/screenshots/n8n-chat-logging.png)
-
-## Matching logic
-
-The search workflow:
-1. normalizes the requested degree;
-2. splits the subject query into meaningful words;
-3. removes filler words;
-4. compares query words with course-name and department words;
-5. uses **Levenshtein distance** for typo tolerance;
-6. scores candidates by matched words;
-7. returns the top 5 results.
-
-The result set is always sourced from the verified course spreadsheet.
 
 ## Repository structure
 
@@ -110,45 +157,38 @@ The result set is always sourced from the verified course spreadsheet.
     ├── PROJECT_REPORT.md
     ├── TECHNICAL_DOCUMENTATION.md
     └── screenshots/
-        ├── README.md
-        ├── chatbot-interface.png
-        ├── chatbot-results.png
-        ├── callback-confirmation.png
-        ├── n8n-course-finder.png
-        ├── n8n-lead-generation.png
-        └── n8n-chat-logging.png
 ```
 
 ## Reproducing the project
 
-1. Create a Google Sheet containing the course database.
-2. Import the three workflows from `workflows/`.
-3. Configure your own Google Sheets OAuth credential in n8n.
-4. Replace the placeholder spreadsheet and sheet values in the imported workflows.
-5. Configure the public webhook endpoints.
-6. Update the configuration constants in `src/course-finder-widget.js`.
-7. Add the chatbot HTML shell in Elementor.
-8. Deploy the JavaScript through WPCode or an equivalent site-wide script mechanism.
+1. Prepare a Google Sheets course catalogue using the expected programme fields.
+2. Import the three JSON workflows from `workflows/` into n8n.
+3. Configure your own Google Sheets OAuth credential and spreadsheet/sheet values.
+4. Expose the required n8n webhook endpoints over HTTPS.
+5. Configure the endpoint/contact constants in `src/course-finder-widget.js`.
+6. Add the expected chatbot HTML elements to the website.
+7. Deploy the JavaScript through WPCode or an equivalent site-wide mechanism.
+8. Test course search, typo handling, no-result behavior, logging, lead capture, callback validation, and production CORS behavior.
 
-See [`deployment/README.md`](deployment/README.md) and [`docs/TECHNICAL_DOCUMENTATION.md`](docs/TECHNICAL_DOCUMENTATION.md) for more detail.
+See [`deployment/README.md`](deployment/README.md) and [`docs/TECHNICAL_DOCUMENTATION.md`](docs/TECHNICAL_DOCUMENTATION.md) for implementation details.
 
 ## Privacy and security
 
-The public repository excludes real lead data, chat transcripts, OAuth tokens, Google Sheet IDs, VPS IP addresses, n8n instance/workflow identifiers, private phone numbers, and booking links. See [`SECURITY.md`](SECURITY.md).
+The public repository intentionally excludes real leads, chat transcripts, OAuth tokens, spreadsheet IDs, VPS addresses, n8n instance/workflow identifiers, private phone numbers, booking links, and other environment-specific configuration. See [`SECURITY.md`](SECURITY.md).
 
-## Current limitations
+## Future extensions
 
-- Matching is fuzzy/keyword-based rather than semantic.
-- Lead notifications are not part of the documented core implementation.
-- The original project was tested manually; automated integration tests are a future improvement.
-- Eligibility, scholarship, visa, and admission decisions are intentionally outside scope.
+- Automated integration/regression tests around all three webhook flows.
+- Rate limiting and stricter server-side payload validation.
+- Email/CRM notifications for new qualified leads.
+- Semantic retrieval/embedding search if future catalogue scale or search requirements justify it.
 
 ## Project status
 
-The production implementation was completed and tested end-to-end for course search, chat logging, lead capture, HTTPS integration, and callback flow.
+**Production implementation completed and tested end-to-end:** course discovery, fuzzy ranking, live website integration, conversation logging, lead capture, callback flow, HTTPS deployment, and supporting infrastructure.
 
 ## Author
 
 **Fiza Naeem**
 
-Project developed for Abroad Study Info, August 2026.
+Developed for Abroad Study Info — August 2026.
